@@ -1653,6 +1653,8 @@ static inline void
 emit_keyboard_event (ClutterEvent       *event,
                      ClutterInputDevice *device)
 {
+  cally_snoop_key_event ((ClutterKeyEvent *) event);
+
   if (_clutter_event_process_filters (event))
     return;
 

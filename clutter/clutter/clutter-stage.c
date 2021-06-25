@@ -179,6 +179,10 @@ static void clutter_stage_update_view_perspective (ClutterStage *stage);
 static void clutter_stage_set_viewport (ClutterStage *stage,
                                         float         width,
                                         float         height);
+static ClutterActor * _clutter_stage_do_pick (ClutterStage   *stage,
+                                              float           x,
+                                              float           y,
+                                              ClutterPickMode mode);
 
 G_DEFINE_TYPE_WITH_PRIVATE (ClutterStage, clutter_stage, CLUTTER_TYPE_ACTOR)
 
@@ -1119,7 +1123,7 @@ clutter_stage_get_view_at (ClutterStage *stage,
   return NULL;
 }
 
-ClutterActor *
+static ClutterActor *
 _clutter_stage_do_pick (ClutterStage   *stage,
                         float           x,
                         float           y,

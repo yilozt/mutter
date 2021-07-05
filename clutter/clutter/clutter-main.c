@@ -1326,6 +1326,7 @@ remove_device_for_event (ClutterStage *stage,
                                point,
                                time,
                                NULL,
+                               NULL,
                                TRUE);
 
   clutter_stage_remove_device_entry (stage, device, sequence);

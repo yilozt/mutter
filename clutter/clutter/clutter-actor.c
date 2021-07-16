@@ -12257,6 +12257,39 @@ clutter_actor_set_child_at_index (ClutterActor *self,
  * Event handling
  */
 
+static gboolean
+clutter_actor_run_actions (ClutterActor       *self,
+                           const ClutterEvent *event,
+                           gboolean            capture)
+{
+  ClutterActorPrivate *priv;
+  const GList *actions, *l;
+  gboolean retval = CLUTTER_EVENT_PROPAGATE;
+
+  priv = self->priv;
+  if (!priv->actions)
+    return CLUTTER_EVENT_PROPAGATE;
+
+  actions = _clutter_meta_group_peek_metas (priv->actions);
+
+  for (l = actions; l; l = l->next)
+    {
+      ClutterAction *action = l->data;
+      ClutterEventPhase phase;
+
+      phase = clutter_action_get_phase (action);
+
+      if ((capture && phase == CLUTTER_PHASE_CAPTURE) ||
+          (!capture && phase == CLUTTER_PHASE_BUBBLE))
+        {
+          if (clutter_action_handle_event (action, event))
+            retval = CLUTTER_EVENT_STOP;
+        }
+    }
+
+  return retval;
+}
+
 /**
  * clutter_actor_event:
  * @actor: a #ClutterActor
@@ -12286,6 +12319,10 @@ clutter_actor_event (ClutterActor       *actor,
   g_return_val_if_fail (event != NULL, FALSE);
 
   g_object_ref (actor);
+
+  retval = clutter_actor_run_actions (actor, event, capture);
+  if (retval)
+    goto handled;
 
   switch (event->type)
     {
@@ -12369,6 +12406,7 @@ clutter_actor_event (ClutterActor       *actor,
         g_signal_emit (actor, actor_signals[signal_num], 0, event, &retval);
     }
 
+ handled:
   g_object_unref (actor);
 
   return retval;

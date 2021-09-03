@@ -2219,7 +2219,7 @@ meta_display_ping_window (MetaWindow *window,
   ping_data->window = window;
   ping_data->serial = serial;
   ping_data->ping_timeout_id =
-    g_timeout_add (check_alive_timeout,
+    g_timeout_add (400,
                    meta_display_ping_timeout,
                    ping_data);
   g_source_set_name_by_id (ping_data->ping_timeout_id, "[mutter] meta_display_ping_timeout");

@@ -474,6 +474,9 @@ meta_display_handle_event (MetaDisplay        *display,
 #ifdef HAVE_WAYLAND
   if (compositor && !bypass_wayland)
     {
+      if (window && event->any.time != CLUTTER_CURRENT_TIME)
+        meta_window_check_alive (window, event->any.time);
+
       if (meta_wayland_compositor_handle_event (compositor, event))
         bypass_clutter = TRUE;
     }

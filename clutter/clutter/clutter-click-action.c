@@ -308,7 +308,7 @@ clutter_click_action_handle_event (ClutterAction      *action,
     case CLUTTER_TOUCH_BEGIN:
       has_button = FALSE;
     case CLUTTER_BUTTON_PRESS:
-      if (has_button && clutter_event_get_click_count (event) != 1)
+      if (has_button)
         return CLUTTER_EVENT_PROPAGATE;
 
       if (priv->is_held)
@@ -362,7 +362,6 @@ clutter_click_action_handle_event (ClutterAction      *action,
         return CLUTTER_EVENT_STOP;
 
       if ((has_button && clutter_event_get_button (event) != priv->press_button) ||
-          (has_button && clutter_event_get_click_count (event) != 1) ||
           clutter_event_get_device (event) != priv->press_device ||
           clutter_event_get_event_sequence (event) != priv->press_sequence)
         return CLUTTER_EVENT_PROPAGATE;

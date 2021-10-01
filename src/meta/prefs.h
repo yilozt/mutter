@@ -106,6 +106,11 @@ typedef enum
   META_PREF_DRAG_THRESHOLD,
   META_PREF_LOCATE_POINTER,
   META_PREF_CHECK_ALIVE_TIMEOUT,
+
+  META_PREF_CORNER_RADIUS,
+  META_PREF_CLIP_EDGE_PADDING,
+  META_PREF_BLACK_LIST,
+  META_PREF_BORDER_WIDTH,
 } MetaPreference;
 
 typedef void (* MetaPrefsChangedFunc) (MetaPreference pref,
@@ -235,6 +240,18 @@ int      meta_prefs_get_draggable_border_width (void);
 
 META_EXPORT
 int      meta_prefs_get_drag_threshold (void);
+
+META_EXPORT
+int      meta_prefs_get_round_corner_radius (void);
+
+META_EXPORT
+void     meta_prefs_get_clip_edge_padding (const char *name, int padding[4]);
+
+META_EXPORT
+gboolean meta_prefs_in_black_list(const char *name);
+
+META_EXPORT
+int      meta_prefs_get_border_width(void);
 
 /**
  * MetaKeyBindingAction:

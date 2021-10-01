@@ -1022,7 +1022,11 @@ meta_compositor_sync_window_geometry (MetaCompositor *compositor,
   changes = meta_window_actor_sync_actor_geometry (window_actor, did_placement);
 
   if (changes & META_WINDOW_ACTOR_CHANGE_SIZE)
+  {
+    if (meta_window_actor_should_clip(window_actor))
+      meta_window_actor_update_clipped_bounds(window_actor);
     meta_plugin_manager_event_size_changed (priv->plugin_mgr, window_actor);
+  }
 }
 
 static void
@@ -1189,6 +1193,31 @@ meta_compositor_get_property (GObject    *object,
 }
 
 static void
+prefs_changed_cb(MetaPreference pref,
+                 gpointer       user_data)
+{
+  MetaCompositor *compositor = user_data;
+  MetaCompositorPrivate *priv =
+    meta_compositor_get_instance_private (compositor);
+  GList *l;
+
+  if (pref == META_PREF_CORNER_RADIUS ||
+      pref == META_PREF_CLIP_EDGE_PADDING ||
+      pref == META_PREF_BORDER_WIDTH)
+  {
+    for (l = priv->windows; l; l = l->next)
+    {
+      if (pref == META_PREF_CLIP_EDGE_PADDING)
+        meta_window_actor_update_clip_padding(l->data);
+      
+      meta_window_actor_update_clipped_bounds(l->data);
+      meta_window_actor_update_glsl(l->data);
+      clutter_actor_queue_redraw(CLUTTER_ACTOR(l->data));
+    }
+  }
+}
+
+static void
 meta_compositor_init (MetaCompositor *compositor)
 {
 }
@@ -1218,6 +1247,8 @@ meta_compositor_constructed (GObject *object)
 
   priv->laters = meta_laters_new (compositor);
 
+  meta_prefs_add_listener(prefs_changed_cb, compositor);
+
   G_OBJECT_CLASS (meta_compositor_parent_class)->constructed (object);
 }
 
@@ -1242,6 +1273,8 @@ meta_compositor_dispose (GObject *object)
   g_clear_pointer (&priv->top_window_group, clutter_actor_destroy);
   g_clear_pointer (&priv->feedback_group, clutter_actor_destroy);
   g_clear_pointer (&priv->windows, g_list_free);
+
+  meta_prefs_remove_listener(prefs_changed_cb, compositor);
 
   G_OBJECT_CLASS (meta_compositor_parent_class)->dispose (object);
 }

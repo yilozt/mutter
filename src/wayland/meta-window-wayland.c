@@ -1002,6 +1002,9 @@ meta_window_wayland_finish_move_resize (MetaWindow              *window,
     gravity = META_GRAVITY_STATIC;
   meta_window_move_resize_internal (window, flags, gravity, rect);
 
+  if (flags & META_MOVE_RESIZE_RESIZE_ACTION)
+    meta_window_actor_update_glsl(meta_window_actor_from_window(window));
+
   g_clear_pointer (&acked_configuration, meta_wayland_window_configuration_free);
 }
 

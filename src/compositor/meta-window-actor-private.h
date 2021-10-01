@@ -99,4 +99,10 @@ void meta_window_actor_update_regions (MetaWindowActor *self);
 
 gboolean meta_window_actor_can_freeze_commits (MetaWindowActor *self);
 
+gboolean meta_window_actor_should_clip(MetaWindowActor *self);
+void meta_window_actor_update_clipped_bounds(MetaWindowActor *window_actor);
+void meta_window_actor_update_glsl(MetaWindowActor *self);
+void meta_window_actor_get_corner_rect(MetaWindowActor *self, MetaRectangle *rect);
+void meta_window_actor_update_clip_padding(MetaWindowActor *self);
+
 #endif /* META_WINDOW_ACTOR_PRIVATE_H */

@@ -1,0 +1,33 @@
+{
+    // 使用 IntelliSense 了解相关属性。 
+    // 悬停以查看现有属性的描述。
+    // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "run mutter",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/compile/usr/local/bin/mutter",
+            "args": ["-d", ":5"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                {
+                    "name": "LD_LIBRARY_PATH",
+                    "value": "${workspaceFolder}/compile/usr/local/lib/mutter-8/:${workspaceFolder}/compile/usr/local/lib/mutter-8/plugins:${workspaceFolder}/compile/usr/local/lib"
+                }
+            ],
+            "externalConsole": false,
+            "preLaunchTask": "build",
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "为 gdb 启用整齐打印",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        }
+    ]
+}

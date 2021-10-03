@@ -29,6 +29,7 @@ G_DEFINE_TYPE_WITH_PRIVATE(MetaClipEffect, meta_clip_effect, CLUTTER_TYPE_OFFSCR
 "uniform vec4 inner_corner_centers_2;                                     \n"\
 "uniform vec2 pixel_step;                                                 \n"\
 "uniform int skip;                                                        \n"\
+"uniform float border_width;                                              \n"\
 "                                                                         \n"\
 "float                                                                    \n"\
 "ellipsis_dist (vec2 p, vec2 radius)                                      \n"\
@@ -101,17 +102,21 @@ G_DEFINE_TYPE_WITH_PRIVATE(MetaClipEffect, meta_clip_effect, CLUTTER_TYPE_OFFSCR
 "                                             corner_centers_1,           \n"\
 "                                             corner_centers_2,           \n"\
 "                                             texture_coord);             \n"\
-"  float inner_alpha = rounded_rect_coverage (inner_bounds,               \n"\
-"                                             inner_corner_centers_1,     \n"\
-"                                             inner_corner_centers_2,     \n"\
-"                                             texture_coord);             \n"\
-"  float border_alpha = clamp (outer_alpha - inner_alpha, 0.0, 1.0)       \n"\
-"                     * cogl_color_out.a;                                 \n"\
+"  if (border_width > 0.0) {                                              \n"\
+"    float inner_alpha = rounded_rect_coverage (inner_bounds,             \n"\
+"                                               inner_corner_centers_1,   \n"\
+"                                               inner_corner_centers_2,   \n"\
+"                                               texture_coord);           \n"\
+"    float border_alpha = clamp (outer_alpha - inner_alpha, 0.0, 1.0)     \n"\
+"                       * cogl_color_out.a;                               \n"\
 "                                                                         \n"\
-"  cogl_color_out *= smoothstep (0.0, 0.6, inner_alpha);                  \n"\
-"  cogl_color_out = mix (cogl_color_out,                                  \n"\
-"                        vec4(vec3(1.0, 1.0, 0.0), 1.0),                  \n"\
-"                        border_alpha);                                   \n"\
+"    cogl_color_out *= smoothstep (0.0, 0.6, inner_alpha);                \n"\
+"    cogl_color_out = mix (cogl_color_out,                                \n"\
+"                          vec4(vec3(0.65), 1.0),                         \n"\
+"                          border_alpha);                                 \n"\
+"  } else {                                                               \n"\
+"    cogl_color_out = cogl_color_out * outer_alpha;                       \n"\
+"  }                                                                      \n"\
 "}                                                                        \n"
 
 static CoglPipeline *
@@ -238,6 +243,9 @@ meta_clip_effect_set_bounds(MetaClipEffect        *effect,
     cogl_pipeline_get_uniform_location(priv->pipeline, "inner_corner_centers_2");
   int location_pixel_step =
     cogl_pipeline_get_uniform_location(priv->pipeline, "pixel_step");
+  int location_border_width =
+    cogl_pipeline_get_uniform_location(priv->pipeline, "border_width");
+
 
   float bounds[] = { x1, y1, x2, y2 };
   float corner_centers_1[] = {
@@ -291,6 +299,7 @@ meta_clip_effect_set_bounds(MetaClipEffect        *effect,
                                   location_pixel_step,
                                   2, 1, pixel_step);
   cogl_pipeline_set_uniform_1i(priv->pipeline, location_skip, 0);
+  cogl_pipeline_set_uniform_1f(priv->pipeline, location_border_width, border);
 }
 
 void

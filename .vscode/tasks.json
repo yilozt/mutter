@@ -6,7 +6,7 @@
         {
             "label": "build",
             "type": "shell",
-            "command": "./tools/build.sh",
+            "command": "./scripts/build",
             "options": {
                 "cwd": "${workspaceFolder}"
             }

@@ -1,0 +1,10 @@
+{
+    "files.associations": {
+        "meta-window-actor-private.h": "c",
+        "compositor-mutter.h": "c",
+        "compositor.h": "c",
+        "prefs.h": "c",
+        "meta-workspace-manager-private.h": "c",
+        "meta-workspace-manager.h": "c"
+    }
+}

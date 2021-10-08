@@ -142,7 +142,8 @@ surface_repaint_scheduled (MetaSurfaceActor *actor,
                            gpointer          user_data)
 {
   MetaWindowActorX11 *actor_x11 = META_WINDOW_ACTOR_X11 (user_data);
-
+  MetaWindow *window = meta_window_actor_get_meta_window (META_WINDOW_ACTOR(actor_x11));
+  meta_compositor_update_blur_behind( meta_display_get_compositor (window->display));
   actor_x11->repaint_scheduled = TRUE;
 }
 
@@ -1049,12 +1050,12 @@ update_shape_region (MetaWindowActorX11 *actor_x11)
       region = cairo_region_create_rectangle(&client_area);  
     }
   else
-   {
+    {
       /* If we don't have a shape on the server, that means that
        * we have an implicit shape of one rectangle covering the
        * entire window. */
       region = cairo_region_create_rectangle (&client_area);
-   }
+    }
   
   if (window->shape_region || window->frame)
     build_and_scan_frame_mask (actor_x11, region);

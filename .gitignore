@@ -1,3 +1,5 @@
+scripts/blur_get/*.[ch]
+patches
 build-aux
 compile
 config.h

@@ -1,6 +1,10 @@
-src/meta_clip_effect.c diff=nodiff
-src/meta_clip_effect.h diff=nodiff
-.gitignore             diff=nodiff
-.gitattributes         diff=nodiff
-tools/**               diff=nodiff
-.vscode/**             diff=nodiff
+src/meta_clip_effect.c  diff=nodiff
+src/meta_clip_effect.h  diff=nodiff
+src/shell-blur-effect.c diff=nodiff
+src/shell-blur-effect.h diff=nodiff
+src/shader.h            diff=nodiff
+.gitignore              diff=nodiff
+.gitattributes          diff=nodiff
+tools/**                diff=nodiff
+.vscode/**              diff=nodiff
+scripts/**              diff=nodiff

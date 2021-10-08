@@ -163,17 +163,17 @@ if get_option('verbose')
   ]
 endif
 
-# libshell_enums = gnome.mkenums_simple('shell-enum-types',
-#   sources: [
-#     'shell-blur-effect.h',
-#   ]
-# )
+libshell_enums = gnome.mkenums_simple('shell-enum-types',
+  sources: [
+    'shell-blur-effect.h',
+  ]
+)
 
-# libshell_src = [
-#   libshell_enums,
-#   'shell-blur-effect.h',
-#   'shell-blur-effect.c',
-# ]
+libshell_src = [
+  libshell_enums,
+  'shell-blur-effect.h',
+  'shell-blur-effect.c',
+]
 
 mutter_sources = [
   'backends/edid.h',
@@ -980,8 +980,8 @@ subdir('meta')
 mutter_built_sources += mutter_enum_types
 
 libmutter = shared_library(libmutter_name,
-  mutter_sources,
-  # mutter_sources + libshell_src,
+  # mutter_sources,
+  mutter_sources + libshell_src,
   mutter_built_sources,
   version: '0.0.0',
   soversion: 0,

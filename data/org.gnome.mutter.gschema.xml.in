@@ -2,6 +2,29 @@
   <schema id="org.gnome.mutter" path="/org/gnome/mutter/"
           gettext-domain="@GETTEXT_DOMAIN@">
 
+    <key name="blur-sigmal" type="i">
+      <default>20</default>
+      <range min="0" max="100"/>
+      <summary>Blur sigmal</summary>
+    </key>
+
+    <key name="blur-brightness" type="i">
+      <default>100</default>
+      <range min="0" max="100"/>
+      <summary>Blur brightness</summary>
+    </key>
+
+    <key name="blur-list" type="as">
+      <default>[]</default>
+      <summary>windows will enable blur effect</summary>
+    </key>
+
+    <key name="blur-window-opacity" type="i">
+      <default>80</default>
+      <range min="0" max="100"/>
+      <summary>Blur brightness</summary>
+    </key>
+
     <key name="border-width" type="i">
       <default>0</default>
       <range min="0" max="100"/>

@@ -84,6 +84,8 @@
 #include "wayland/meta-wayland-private.h"
 #endif
 
+#include "core/meta-workspace-manager-private.h"
+
 enum
 {
   PROP_0,
@@ -610,6 +612,8 @@ meta_compositor_add_window (MetaCompositor    *compositor,
     window_group = priv->window_group;
 
   clutter_actor_add_child (window_group, CLUTTER_ACTOR (window_actor));
+  meta_window_actor_create_blur_actor(window_actor);
+
 
   /* Initial position in the stack is arbitrary; stacking will be synced
    * before we first paint.
@@ -661,6 +665,7 @@ meta_compositor_queue_frame_drawn (MetaCompositor *compositor,
   MetaWindowActor *window_actor = meta_window_actor_from_window (window);
 
   meta_window_actor_queue_frame_drawn (window_actor, no_delay_frame);
+  meta_compositor_update_blur_behind(compositor);
 }
 
 void
@@ -992,6 +997,20 @@ meta_compositor_sync_stack (MetaCompositor  *compositor,
 
   sync_actor_stacking (compositor);
 
+  MetaWorkspaceManager *manager = priv->display->workspace_manager;
+  MetaWorkspace *active_workspace = manager->active_workspace;
+
+  for (GList *l = priv->windows; l; l = l->next)
+    {
+      MetaWindow *window = meta_window_actor_get_meta_window(l->data);
+      MetaWorkspace *workspace = meta_window_get_workspace(window);
+      if (workspace == active_workspace)
+        {
+          meta_window_actor_set_blur_behind(l->data);
+          meta_window_actor_update_blur_position_size(l->data);
+        }
+    }
+
   top_window_actor = get_top_visible_window_actor (compositor);
 
   if (priv->top_window_actor == top_window_actor)
@@ -1026,7 +1045,13 @@ meta_compositor_sync_window_geometry (MetaCompositor *compositor,
     if (meta_window_actor_should_clip(window_actor))
       meta_window_actor_update_clipped_bounds(window_actor);
     meta_plugin_manager_event_size_changed (priv->plugin_mgr, window_actor);
+    meta_window_actor_update_blur_position_size(window_actor);
   }
+
+  if (changes & META_WINDOW_ACTOR_CHANGE_POSITION)
+    meta_window_actor_update_blur_position_size(window_actor);
+
+  meta_compositor_update_blur_behind(compositor);
 }
 
 static void
@@ -1201,18 +1226,31 @@ prefs_changed_cb(MetaPreference pref,
     meta_compositor_get_instance_private (compositor);
   GList *l;
 
-  if (pref == META_PREF_CORNER_RADIUS ||
-      pref == META_PREF_CLIP_EDGE_PADDING ||
-      pref == META_PREF_BORDER_WIDTH)
+  for (l = priv->windows; l; l = l->next)
   {
-    for (l = priv->windows; l; l = l->next)
+    switch (pref)
     {
+    case META_PREF_CORNER_RADIUS:
+    case META_PREF_CLIP_EDGE_PADDING:
+    case META_PREF_BORDER_WIDTH:
       if (pref == META_PREF_CLIP_EDGE_PADDING)
-        meta_window_actor_update_clip_padding(l->data);
+        meta_window_actor_update_clip_padding (l->data);
       
-      meta_window_actor_update_clipped_bounds(l->data);
-      meta_window_actor_update_glsl(l->data);
-      clutter_actor_queue_redraw(CLUTTER_ACTOR(l->data));
+      meta_window_actor_update_clipped_bounds (l->data);
+      meta_window_actor_update_glsl (l->data);
+      clutter_actor_queue_redraw (CLUTTER_ACTOR (l->data));
+      break;
+    case META_PREF_BLUR_SIGMAL:
+      meta_window_actor_update_blur_sigmal (l->data);
+      break;
+    case META_PREF_BLUR_BRIGHTNESS:
+      meta_window_actor_update_blur_brightness (l->data);
+      break;
+    case META_PREF_BLUR_WINDOW_OPACITY:
+      meta_window_actor_update_blur_window_opacity (l->data);
+      break;
+    default:
+      break;
     }
   }
 }
@@ -1608,4 +1646,21 @@ meta_compositor_get_laters (MetaCompositor *compositor)
     meta_compositor_get_instance_private (compositor);
 
   return priv->laters;
+}
+
+void meta_compositor_update_blur_behind(MetaCompositor *compositor)
+{
+  MetaCompositorPrivate *priv =
+    meta_compositor_get_instance_private (compositor);
+
+  MetaWorkspaceManager *manager = priv->display->workspace_manager;
+  MetaWorkspace *active_workspace = manager->active_workspace;
+
+  for (GList *l = priv->windows; l; l = l->next)
+    {
+      MetaWindow *window = meta_window_actor_get_meta_window(l->data);
+      MetaWorkspace *workspace = meta_window_get_workspace(window);
+      if (workspace == active_workspace)
+        meta_window_actor_set_blur_behind(l->data);
+    }
 }

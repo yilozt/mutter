@@ -122,10 +122,14 @@ static GDesktopVisualBellType visual_bell_type = G_DESKTOP_VISUAL_BELL_FULLSCREE
 static MetaButtonLayout button_layout;
 
 static int round_corner_radius = 8;
+static int border_width = 0;
+static int blur_sigmal = 20;
+static int blur_window_opacity = 80;
+static int blur_brightness = 100;
 static JsonNode *clip_edge_padding = NULL;
 /* NULL-terminated array */
 static char **black_list = NULL;
-static int border_width = 0;
+static char **blur_list = NULL;
 
 /* NULL-terminated array */
 static char **workspace_names = NULL;
@@ -500,6 +504,14 @@ static MetaStringArrayPreference preferences_string_array[] =
       NULL,
       &black_list,
     },
+    {
+      { "blur-list",
+        SCHEMA_MUTTER,
+        META_PREF_BLUR_LIST,
+      },
+      NULL,
+      &blur_list,
+    },
     { { NULL, 0, 0 }, NULL },
   };
 
@@ -555,6 +567,30 @@ static MetaIntPreference preferences_int[] =
         META_PREF_BORDER_WIDTH,
       },
       &border_width,
+    },
+    {
+      {
+        "blur-sigmal",
+        SCHEMA_MUTTER,
+        META_PREF_BLUR_SIGMAL,
+      },
+      &blur_sigmal,
+    },
+    {
+      {
+        "blur-brightness",
+        SCHEMA_MUTTER,
+        META_PREF_BLUR_BRIGHTNESS,
+      },
+      &blur_brightness,
+    },
+    {
+      {
+        "blur-window-opacity",
+        SCHEMA_MUTTER,
+        META_PREF_BLUR_WINDOW_OPACITY,
+      },
+      &blur_window_opacity,
     },
     { { NULL, 0, 0 }, NULL },
   };
@@ -1887,6 +1923,18 @@ meta_preference_to_string (MetaPreference pref)
 
     case META_PREF_BORDER_WIDTH:
       return "BORDER_WIDTH";
+    
+    case META_PREF_BLUR_SIGMAL:
+      return "BLUR_SIGMAL";
+
+    case META_PREF_BLUR_BRIGHTNESS:
+      return "BLUR_BRIGHTNESS";
+
+    case META_PREF_BLUR_LIST:
+      return "BLUR_LIST";
+
+    case META_PREF_BLUR_WINDOW_OPACITY:
+      return "BLUR_WINDOW_OPACITY";
     }
 
   return "(unknown)";
@@ -2408,4 +2456,35 @@ int
 meta_prefs_get_border_width(void)
 {
   return border_width;
+}
+
+int
+meta_prefs_get_blur_sigmal(void)
+{
+  return blur_sigmal;
+}
+
+double
+meta_prefs_get_blur_brightness(void)
+{
+  return (double) blur_brightness * 0.01;
+}
+
+int
+meta_prefs_get_blur_window_opacity(void)
+{
+  return blur_window_opacity * 255 * 0.01;
+}
+
+gboolean
+meta_prefs_in_blur_list(const char *name)
+{
+  g_return_val_if_fail(blur_list, FALSE);
+
+  int len = g_strv_length(blur_list);
+
+  for (int i = 0; i < len; i++)
+    if (g_strcmp0(name, blur_list[i]) == 0)
+      return TRUE;
+  return FALSE;
 }

@@ -9,7 +9,8 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/compile/usr/local/bin/mutter",
-            "args": ["-d", ":5"],
+            // "args": ["-d", ":5", "--nested"],        // wayland
+            "args": ["-d", ":5"],                       // x11
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [

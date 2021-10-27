@@ -923,7 +923,7 @@ start_simple_effect (MetaWindowActor  *self,
   return TRUE;
 }
 
-void
+static void
 meta_window_actor_remove_blur (MetaWindowActor *self)
 {
   MetaWindowActorPrivate *priv =
@@ -955,8 +955,8 @@ meta_window_actor_after_effects (MetaWindowActor *self)
           clutter_actor_remove_effect (CLUTTER_ACTOR(self),
                                        CLUTTER_EFFECT(priv->round_clip_effect));
           meta_window_actor_remove_blur(self);
-          clutter_actor_destroy (CLUTTER_ACTOR (self));
         }
+      clutter_actor_destroy (CLUTTER_ACTOR (self));
     }
   else
     {

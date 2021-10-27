@@ -107,7 +107,6 @@ void meta_window_actor_update_clip_padding (MetaWindowActor *self);
 void meta_window_actor_create_blur_actor (MetaWindowActor *self);
 void meta_window_actor_set_blur_behind (MetaWindowActor *self);
 void meta_window_actor_update_blur_position_size (MetaWindowActor *self);
-void meta_window_actor_remove_blur (MetaWindowActor *self);
 void meta_window_actor_update_blur_sigmal (MetaWindowActor *self);
 void meta_window_actor_update_blur_brightness (MetaWindowActor *self);
 void meta_window_actor_update_blur_window_opacity (MetaWindowActor *self);

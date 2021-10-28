@@ -612,8 +612,6 @@ meta_compositor_add_window (MetaCompositor    *compositor,
     window_group = priv->window_group;
 
   clutter_actor_add_child (window_group, CLUTTER_ACTOR (window_actor));
-  meta_window_actor_create_blur_actor(window_actor);
-
 
   /* Initial position in the stack is arbitrary; stacking will be synced
    * before we first paint.

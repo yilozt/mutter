@@ -65,6 +65,8 @@ typedef struct _MetaWindowActorPrivate
   ClutterActor *blur_actor;
   MetaShellBlurEffect *blur_effect;
 
+  ulong visible_changed_id;
+  ulong wm_class_changed_id;
   int geometry_scale;
 
   /*
@@ -169,11 +171,11 @@ meta_window_actor_update_blur_position_size(MetaWindowActor *self)
   else
    {
       clutter_actor_set_position (priv->blur_actor,
-                                  frame_rect.x + priv->clip_padding[0] - 2,
-                                  frame_rect.y + priv->clip_padding[2] - 2);
+                                  frame_rect.x + priv->clip_padding[0] - 1,
+                                  frame_rect.y + priv->clip_padding[2] - 1);
       clutter_actor_set_size (priv->blur_actor,
-                              frame_rect.width - priv->clip_padding[0] - priv->clip_padding[1] + 3,
-                              frame_rect.height - priv->clip_padding[2] - priv->clip_padding[3] + 3);
+                              frame_rect.width - priv->clip_padding[0] - priv->clip_padding[1] + 1,
+                              frame_rect.height - priv->clip_padding[2] - priv->clip_padding[3] + 1);
       meta_shell_blur_effect_set_skip (priv->blur_effect, false);
    }
 }
@@ -295,7 +297,7 @@ _meta_window_actor_should_clip(MetaWindowActor *self)
   MetaWindowActorPrivate *priv = meta_window_actor_get_instance_private (self);
   MetaWindow *window = priv->window;
 
-  if (meta_window_get_client_type(window) == META_WINDOW_CLIENT_TYPE_WAYLAND ||
+  if (/* meta_window_get_client_type(window) == META_WINDOW_CLIENT_TYPE_WAYLAND || */
       meta_prefs_in_black_list(window->res_name))
     {
       return FALSE;
@@ -658,6 +660,18 @@ on_visible_changed (MetaWindowActor *self)
 }
 
 static void
+on_wm_class_changed (MetaWindow *self,
+                     gpointer    user_data)
+{
+  MetaWindowActor *actor = meta_window_actor_from_window (self);
+  MetaWindowActorPrivate *priv = meta_window_actor_get_instance_private (actor);
+
+  meta_window_actor_create_blur_actor(actor);
+  g_clear_signal_handler(&priv->wm_class_changed_id, self);
+  g_print("signal_handler_now: %lu", priv->wm_class_changed_id);
+}
+
+static void
 meta_window_actor_constructed (GObject *object)
 {
   MetaWindowActor *self = META_WINDOW_ACTOR (object);
@@ -683,7 +697,11 @@ meta_window_actor_constructed (GObject *object)
 
   meta_window_actor_sync_actor_geometry (self, priv->window->placed);
 
-  g_signal_connect (object, "notify::visible", G_CALLBACK (on_visible_changed), object);
+  priv->visible_changed_id = 
+    g_signal_connect (object, "notify::visible", G_CALLBACK (on_visible_changed), NULL);
+
+  priv->wm_class_changed_id =
+    g_signal_connect (window, "notify::wm-class", G_CALLBACK (on_wm_class_changed), object);
 }
 
 static void
@@ -702,6 +720,7 @@ meta_window_actor_dispose (GObject *object)
 
   priv->disposed = TRUE;
 
+  g_clear_signal_handler(&priv->visible_changed_id, object);
   meta_compositor_remove_window_actor (compositor, self);
 
   g_clear_object (&priv->window);

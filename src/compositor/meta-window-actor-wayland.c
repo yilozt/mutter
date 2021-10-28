@@ -26,6 +26,7 @@
 #include "wayland/meta-wayland-surface.h"
 #include "meta/meta-shadow-factory.h"
 #include "ui/frames.h"
+#include "compositor/compositor-private.h"
 
 struct _MetaWindowActorWayland
 {
@@ -51,6 +52,7 @@ struct _MetaWindowActorWayland
   MetaShadowFactory *shadow_factory;
   gulong shadow_factory_changed_handler_id;
   gulong size_changed_id;
+  gulong repaint_scheduled_id;
   
 };
 
@@ -121,6 +123,16 @@ surface_size_changed (MetaSurfaceActor *actor,
 }
 
 static void
+surface_repaint_scheduled (MetaSurfaceActor *actor,
+                           gpointer          user_data)
+{
+  MetaWindowActorWayland *actor_wayland = META_WINDOW_ACTOR_WAYLAND (user_data);
+  MetaWindow *window = meta_window_actor_get_meta_window (META_WINDOW_ACTOR(actor_wayland));
+  meta_compositor_update_blur_behind( meta_display_get_compositor (window->display));
+}
+
+
+static void
 meta_window_actor_wayland_assign_surface_actor (MetaWindowActor  *actor,
                                                 MetaSurfaceActor *surface_actor)
 {
@@ -142,9 +154,14 @@ meta_window_actor_wayland_assign_surface_actor (MetaWindowActor  *actor,
   meta_window_actor_wayland_rebuild_surface_tree (actor);
 
   actor_wayland->size_changed_id =
-   g_signal_connect (surface_actor, "size-changed",
-                    G_CALLBACK (surface_size_changed),
-                    actor_wayland);
+    g_signal_connect (surface_actor, "size-changed",
+                      G_CALLBACK (surface_size_changed),
+                      actor_wayland);
+
+  actor_wayland->repaint_scheduled_id = 
+    g_signal_connect (surface_actor, "repaint-scheduled",
+                      G_CALLBACK (surface_repaint_scheduled),
+                      actor_wayland);
 }
 
 static void
@@ -497,6 +514,7 @@ meta_window_actor_wayland_dispose (GObject *object)
   GList *l;
 
   g_clear_signal_handler (&actor_wayland->size_changed_id, surface_actor);
+  g_clear_signal_handler (&actor_wayland->repaint_scheduled_id, surface_actor);
 
   children = clutter_actor_get_children (CLUTTER_ACTOR (window_actor));
   for (l = children; l; l = l->next)

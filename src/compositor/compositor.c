@@ -617,6 +617,10 @@ meta_compositor_add_window (MetaCompositor    *compositor,
    * before we first paint.
    */
   priv->windows = g_list_append (priv->windows, window_actor);
+
+  if (window->client_type == META_WINDOW_CLIENT_TYPE_X11)
+    meta_window_actor_create_blur_actor(window_actor);
+
   sync_actor_stacking (compositor);
 }
 

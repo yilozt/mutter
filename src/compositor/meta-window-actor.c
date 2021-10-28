@@ -211,6 +211,15 @@ switch (type)
   }
 }
 
+
+/*
+ * in wayland, `res-name` property of MetaWindow is empty when MetaWindow
+ * has been added to MetaWindowActor. So we have to create create blur actor
+ * in on_wm_class_changed callback.
+ * 
+ * in xorg, `res-name` property of MetaWindow has been setted when MetaWindow,
+ * so we can create blur actor when window actor be created.
+ */
 void
 meta_window_actor_create_blur_actor (MetaWindowActor *self)
 {
@@ -236,7 +245,8 @@ meta_window_actor_create_blur_actor (MetaWindowActor *self)
 
   ClutterActor *parent = clutter_actor_get_parent (CLUTTER_ACTOR(self));
   clutter_actor_insert_child_below (parent, priv->blur_actor, CLUTTER_ACTOR(self));
-  meta_window_set_opacity(priv->window, meta_prefs_get_blur_window_opacity());
+  int opa = meta_prefs_get_blur_window_opacity();
+  meta_window_set_opacity(priv->window, opa);
 }
 
 static void
@@ -614,6 +624,11 @@ meta_window_actor_real_assign_surface_actor (MetaWindowActor  *self,
     meta_window_actor_set_frozen (self, TRUE);
   else
     meta_window_actor_sync_thawed_state (self);
+
+  if (priv->blur_actor)
+    {
+      meta_window_actor_update_opacity (self);
+    }
 }
 
 void
@@ -668,7 +683,6 @@ on_wm_class_changed (MetaWindow *self,
 
   meta_window_actor_create_blur_actor(actor);
   g_clear_signal_handler(&priv->wm_class_changed_id, self);
-  g_print("signal_handler_now: %lu", priv->wm_class_changed_id);
 }
 
 static void
@@ -678,6 +692,7 @@ meta_window_actor_constructed (GObject *object)
   MetaWindowActorPrivate *priv =
     meta_window_actor_get_instance_private (self);
   MetaWindow *window = priv->window;
+  MetaWindowClientType type = meta_window_get_client_type (window);
 
   priv->compositor = window->display->compositor;
 
@@ -700,8 +715,11 @@ meta_window_actor_constructed (GObject *object)
   priv->visible_changed_id = 
     g_signal_connect (object, "notify::visible", G_CALLBACK (on_visible_changed), NULL);
 
-  priv->wm_class_changed_id =
-    g_signal_connect (window, "notify::wm-class", G_CALLBACK (on_wm_class_changed), object);
+  if (type == META_WINDOW_CLIENT_TYPE_WAYLAND)
+  {
+    priv->wm_class_changed_id =
+      g_signal_connect (window, "notify::wm-class", G_CALLBACK (on_wm_class_changed), object);
+  }
 }
 
 static void

@@ -1,7 +1,4 @@
 {
-    // 使用 IntelliSense 了解相关属性。 
-    // 悬停以查看现有属性的描述。
-    // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
         {
@@ -9,8 +6,12 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/compile/usr/local/bin/mutter",
-            // "args": ["-d", ":5", "--nested"],        // wayland
-            "args": ["-d", ":5"],                       // x11
+            //wayland
+            // "args": ["--nested", "--wayland"],
+            //
+            // x11, run `Xephyr -br -ac -noreset -screen 1280x720 :5` in another terminal
+            // then just need to press F5 in vscode
+            "args": ["-d", ":5"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [

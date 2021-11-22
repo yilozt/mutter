@@ -1,0 +1,27 @@
+#!/bin/bash
+
+ver=40.5
+
+cd $(dirname $0)
+
+rm -rf ../patches
+mkdir -p ../patches
+
+mkdir -p tmp/a/src
+mkdir -p tmp/b/src
+cp blur_get/*.[ch] tmp/a/src
+cp ../src/shell-blur-effect.[ch] tmp/b/src
+
+cd tmp
+diff -Narup a b > ../../patches/shell_blur_effect_${ver}.patch
+cd ..
+rm -rf tmp
+
+cd ..
+
+git config diff.nodiff.command true
+git diff 40.5 > ./patches/rounded_corners_${ver}.patch
+git config --unset diff.nodiff.command
+
+cp src/shader.h ./patches
+cp src/meta_clip_effect.[ch] ./patches

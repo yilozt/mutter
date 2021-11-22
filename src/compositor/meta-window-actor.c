@@ -41,6 +41,9 @@
 #include "wayland/meta-wayland-surface.h"
 #endif
 
+#include "meta_clip_effect.h"
+#include "shell-blur-effect.h"
+
 typedef enum
 {
   INITIALLY_FROZEN,
@@ -55,6 +58,15 @@ typedef struct _MetaWindowActorPrivate
 
   MetaSurfaceActor *surface;
 
+  MetaClipEffect *round_clip_effect;
+  gboolean effect_setuped;
+  gboolean should_clip;
+  int clip_padding[4];
+  ClutterActor *blur_actor;
+  MetaShellBlurEffect *blur_effect;
+
+  ulong visible_changed_id;
+  ulong wm_class_changed_id;
   int geometry_scale;
 
   /*
@@ -118,6 +130,247 @@ G_DEFINE_ABSTRACT_TYPE_WITH_CODE (MetaWindowActor, meta_window_actor, CLUTTER_TY
                                   G_ADD_PRIVATE (MetaWindowActor)
                                   G_IMPLEMENT_INTERFACE (META_TYPE_CULLABLE, cullable_iface_init)
                                   G_IMPLEMENT_INTERFACE (META_TYPE_SCREEN_CAST_WINDOW, screen_cast_window_iface_init));
+
+static gboolean _meta_window_actor_should_clip(MetaWindowActor *self);
+
+static MetaClipEffect*
+create_clip_effect(MetaWindowActor *self)
+{
+  MetaWindowActorPrivate *priv = meta_window_actor_get_instance_private(self);
+  if ((priv->should_clip = _meta_window_actor_should_clip(self)))
+    return meta_clip_effect_new();
+  else
+    return NULL;
+}
+
+void
+meta_window_actor_update_blur_position_size(MetaWindowActor *self)
+{
+  MetaWindowActorPrivate *priv =
+    meta_window_actor_get_instance_private (self);
+
+  if (!priv->blur_actor)
+    return;
+
+  MetaRectangle buf_rect;
+  MetaRectangle frame_rect;
+  meta_window_get_frame_rect (priv->window, &frame_rect);
+  meta_window_get_buffer_rect (priv->window, &buf_rect);
+
+  if (meta_window_get_maximized (priv->window) ||
+      meta_window_is_fullscreen (priv->window))
+    {
+      clutter_actor_set_position (priv->blur_actor,
+                                  frame_rect.x,
+                                  frame_rect.y);
+      clutter_actor_set_size (priv->blur_actor,
+                              frame_rect.width,
+                              frame_rect.height);
+      meta_shell_blur_effect_set_skip (priv->blur_effect, true);
+    }
+  else
+   {
+      clutter_actor_set_position (priv->blur_actor,
+                                  frame_rect.x + priv->clip_padding[0] - 1,
+                                  frame_rect.y + priv->clip_padding[2] - 1);
+      clutter_actor_set_size (priv->blur_actor,
+                              frame_rect.width - priv->clip_padding[0] - priv->clip_padding[1] + 1,
+                              frame_rect.height - priv->clip_padding[2] - priv->clip_padding[3] + 1);
+      meta_shell_blur_effect_set_skip (priv->blur_effect, false);
+   }
+}
+
+void
+meta_window_actor_set_blur_behind (MetaWindowActor *self)
+{
+  MetaWindowActorPrivate *priv =
+    meta_window_actor_get_instance_private (self);
+
+  if (!priv->blur_actor)
+    return;
+
+  ClutterActor *parent = clutter_actor_get_parent (CLUTTER_ACTOR(self));
+  clutter_actor_set_child_below_sibling (parent, priv->blur_actor, CLUTTER_ACTOR(self));  
+}
+
+static gboolean
+meta_window_is_normal (MetaWindowActor *actor)
+{
+  MetaWindowActorPrivate *priv = meta_window_actor_get_instance_private (actor);
+  MetaWindowType type = meta_window_get_window_type (priv->window);
+
+switch (type)
+  {
+    case META_WINDOW_NORMAL:
+    case META_WINDOW_DIALOG:
+    case META_WINDOW_MODAL_DIALOG:
+    case META_WINDOW_SPLASHSCREEN:
+      return TRUE;
+    default:
+      return FALSE;
+  }
+}
+
+
+/*
+ * in xwayland, `res-name` property of MetaWindow (WM_CLASS_INSTANCE property)
+ * is empty when MetaWindow has been added to MetaWindowActor. So we have to
+ * create create blur actor in on_wm_class_changed callback.
+ * 
+ * in xorg, `res-name` property of MetaWindow has been setted when MetaWindow,
+ * so we can create blur actor when window actor be created.
+ */
+void
+meta_window_actor_create_blur_actor (MetaWindowActor *self)
+{
+  MetaWindowActorPrivate *priv =
+    meta_window_actor_get_instance_private (self);
+  
+  if (!meta_window_is_normal (self))
+    return;
+  if (!meta_prefs_in_blur_list (priv->window->res_name))
+    return;
+  if (priv->blur_actor != NULL)
+    return;
+
+  priv->blur_actor = clutter_actor_new ();
+  priv->blur_effect = meta_shell_blur_effect_new ();
+
+  meta_shell_blur_effect_set_brightness (priv->blur_effect,
+                                    meta_prefs_get_blur_brightness());
+  meta_shell_blur_effect_set_sigma (priv->blur_effect,
+                               meta_prefs_get_blur_sigmal());
+  meta_shell_blur_effect_set_mode (priv->blur_effect, SHELL_BLUR_MODE_BACKGROUND);
+  clutter_actor_add_effect_with_name (priv->blur_actor,
+                                      "ShellBlurEffect",
+                                      CLUTTER_EFFECT(priv->blur_effect));
+
+  ClutterActor *parent = clutter_actor_get_parent (CLUTTER_ACTOR(self));
+  clutter_actor_insert_child_below (parent, priv->blur_actor, CLUTTER_ACTOR(self));
+  int opa = meta_prefs_get_blur_window_opacity();
+  meta_window_set_opacity(priv->window, opa);
+}
+
+static void
+check_meta_window_surface_actor(MetaWindowActor *self)
+{
+  MetaWindowActorPrivate *priv = meta_window_actor_get_instance_private(self);
+  MetaSurfaceActor *surface = meta_window_actor_get_surface(self);
+
+  if (!priv->effect_setuped && surface && priv->round_clip_effect)
+  {
+    clutter_actor_add_effect_with_name(CLUTTER_ACTOR(surface),
+                                       "Rounded Corners Effect(Surface)",
+                                       CLUTTER_EFFECT(priv->round_clip_effect));
+    priv->effect_setuped = true;
+  }
+}
+
+void
+meta_window_actor_update_glsl(MetaWindowActor *self)
+{
+  MetaRectangle frame_rect;
+  MetaRectangle buf_rect;
+  MetaWindow *window = meta_window_actor_get_meta_window(self);
+  MetaWindowActorPrivate *priv = meta_window_actor_get_instance_private(self);
+
+  if(!priv->round_clip_effect)
+    return;
+
+  check_meta_window_surface_actor(self);
+
+  if (!meta_window_actor_should_clip(self))
+  {
+    meta_clip_effect_skip(priv->round_clip_effect);
+    return;
+  }
+
+  meta_window_get_frame_rect(window, &frame_rect);
+  meta_window_get_buffer_rect(window, &buf_rect);
+
+  cairo_rectangle_int_t bounds;
+  bounds.x = frame_rect.x - buf_rect.x;
+  bounds.y = frame_rect.y - buf_rect.y;
+  bounds.width = frame_rect.width;
+  bounds.height = frame_rect.height;
+
+  if (bounds.width <= 0 || bounds.height <= 0)
+    return;
+
+  if (priv->clip_padding[0] == -1 && window->res_name)
+    meta_prefs_get_clip_edge_padding(window->res_name, priv->clip_padding);
+
+  meta_clip_effect_set_bounds(priv->round_clip_effect, &bounds, priv->clip_padding);
+}
+
+static gboolean
+_meta_window_actor_should_clip(MetaWindowActor *self)
+{
+  MetaWindowActorPrivate *priv = meta_window_actor_get_instance_private (self);
+  MetaWindow *window = priv->window;
+
+  if (/* meta_window_get_client_type(window) == META_WINDOW_CLIENT_TYPE_WAYLAND || */
+      meta_prefs_in_black_list(window->res_name))
+    {
+      return FALSE;
+    }
+
+  return meta_window_is_normal(self);
+}
+
+gboolean
+meta_window_actor_should_clip(MetaWindowActor *self)
+{
+  MetaWindowActorPrivate *priv = meta_window_actor_get_instance_private (self);
+
+  return priv->should_clip && 
+        !(meta_window_get_maximized(priv->window)||
+          meta_window_is_fullscreen(priv->window)); 
+}
+
+void
+meta_window_actor_get_corner_rect(MetaWindowActor *self,
+                                  MetaRectangle *rect)
+{
+  MetaWindowActorPrivate *priv = meta_window_actor_get_instance_private(self);
+  g_return_if_fail(priv->round_clip_effect);
+  meta_clip_effect_get_bounds(priv->round_clip_effect, rect);
+}
+
+void meta_window_actor_update_clip_padding(MetaWindowActor *self)
+{
+  MetaWindowActorPrivate *priv = meta_window_actor_get_instance_private(self);
+  if(priv->round_clip_effect)
+    meta_prefs_get_clip_edge_padding(priv->window->res_name,
+                                     priv->clip_padding);
+}
+
+void
+meta_window_actor_update_blur_sigmal (MetaWindowActor *self)
+{
+  MetaWindowActorPrivate *priv = meta_window_actor_get_instance_private(self);
+  if (priv->blur_actor)
+    meta_shell_blur_effect_set_sigma (priv->blur_effect,
+                                 meta_prefs_get_blur_sigmal());
+}
+
+void
+meta_window_actor_update_blur_brightness (MetaWindowActor *self)
+{
+  MetaWindowActorPrivate *priv = meta_window_actor_get_instance_private(self);
+  if (priv->blur_actor)
+    meta_shell_blur_effect_set_brightness (priv->blur_effect,
+                                 meta_prefs_get_blur_brightness());
+}
+
+void
+meta_window_actor_update_blur_window_opacity (MetaWindowActor *self)
+{
+  MetaWindowActorPrivate *priv = meta_window_actor_get_instance_private(self);
+  if (priv->blur_actor)
+    meta_window_set_opacity (priv->window,
+                             meta_prefs_get_blur_window_opacity());
+}
 
 static void
 meta_window_actor_class_init (MetaWindowActorClass *klass)
@@ -216,6 +469,11 @@ meta_window_actor_init (MetaWindowActor *self)
     meta_window_actor_get_instance_private (self);
 
   priv->geometry_scale = 1;
+  priv->effect_setuped = FALSE;
+  priv->clip_padding[0] = -1;
+
+  priv->blur_actor = NULL;
+  priv->blur_effect = NULL;
 }
 
 static void
@@ -368,6 +626,11 @@ meta_window_actor_real_assign_surface_actor (MetaWindowActor  *self,
     meta_window_actor_set_frozen (self, TRUE);
   else
     meta_window_actor_sync_thawed_state (self);
+
+  if (priv->blur_actor)
+    {
+      meta_window_actor_update_opacity (self);
+    }
 }
 
 void
@@ -400,12 +663,38 @@ init_surface_actor (MetaWindowActor *self)
 }
 
 static void
+on_visible_changed (MetaWindowActor *self)
+{
+  MetaWindowActorPrivate *priv = meta_window_actor_get_instance_private (self);
+  
+  if (!priv->blur_actor)
+    return;
+
+  if (priv->visible)
+    clutter_actor_show(priv->blur_actor);
+  else
+    clutter_actor_hide(priv->blur_actor);
+}
+
+static void
+on_wm_class_changed (MetaWindow *self,
+                     gpointer    user_data)
+{
+  MetaWindowActor *actor = meta_window_actor_from_window (self);
+  MetaWindowActorPrivate *priv = meta_window_actor_get_instance_private (actor);
+
+  meta_window_actor_create_blur_actor(actor);
+  g_clear_signal_handler(&priv->wm_class_changed_id, self);
+}
+
+static void
 meta_window_actor_constructed (GObject *object)
 {
   MetaWindowActor *self = META_WINDOW_ACTOR (object);
   MetaWindowActorPrivate *priv =
     meta_window_actor_get_instance_private (self);
   MetaWindow *window = priv->window;
+  MetaWindowClientType type = meta_window_get_client_type (window);
 
   priv->compositor = window->display->compositor;
 
@@ -424,6 +713,15 @@ meta_window_actor_constructed (GObject *object)
     priv->first_frame_state = DRAWING_FIRST_FRAME;
 
   meta_window_actor_sync_actor_geometry (self, priv->window->placed);
+
+  priv->visible_changed_id = 
+    g_signal_connect (object, "notify::visible", G_CALLBACK (on_visible_changed), NULL);
+
+  if (type == META_WINDOW_CLIENT_TYPE_WAYLAND)
+  {
+    priv->wm_class_changed_id =
+      g_signal_connect (window, "notify::wm-class", G_CALLBACK (on_wm_class_changed), object);
+  }
 }
 
 static void
@@ -442,6 +740,7 @@ meta_window_actor_dispose (GObject *object)
 
   priv->disposed = TRUE;
 
+  g_clear_signal_handler(&priv->visible_changed_id, object);
   meta_compositor_remove_window_actor (compositor, self);
 
   g_clear_object (&priv->window);
@@ -470,6 +769,7 @@ meta_window_actor_set_property (GObject      *object,
     {
     case PROP_META_WINDOW:
       priv->window = g_value_dup_object (value);
+      priv->round_clip_effect = create_clip_effect(self);
       g_signal_connect_object (priv->window, "notify::appears-focused",
                                G_CALLBACK (window_appears_focused_notify), self, 0);
       break;
@@ -663,6 +963,20 @@ start_simple_effect (MetaWindowActor  *self,
 }
 
 static void
+meta_window_actor_remove_blur (MetaWindowActor *self)
+{
+  MetaWindowActorPrivate *priv =
+    meta_window_actor_get_instance_private (self);
+
+  if (!priv->blur_actor)
+    return;
+
+  ClutterActor *parent = clutter_actor_get_parent (CLUTTER_ACTOR (self));
+  clutter_actor_remove_effect (priv->blur_actor, CLUTTER_EFFECT (priv->blur_effect));
+  clutter_actor_remove_child (parent, priv->blur_actor);
+}
+
+static void
 meta_window_actor_after_effects (MetaWindowActor *self)
 {
   MetaWindowActorPrivate *priv =
@@ -675,6 +989,12 @@ meta_window_actor_after_effects (MetaWindowActor *self)
 
   if (priv->needs_destroy)
     {
+      if (priv->round_clip_effect)
+        {
+          clutter_actor_remove_effect (CLUTTER_ACTOR(self),
+                                       CLUTTER_EFFECT(priv->round_clip_effect));
+          meta_window_actor_remove_blur(self);
+        }
       clutter_actor_destroy (CLUTTER_ACTOR (self));
     }
   else
@@ -801,6 +1121,19 @@ meta_window_actor_queue_destroy (MetaWindowActor *self)
 
   if (!meta_window_actor_effect_in_progress (self))
     clutter_actor_destroy (CLUTTER_ACTOR (self));
+}
+
+void
+meta_window_actor_update_clipped_bounds(MetaWindowActor *window_actor)
+{
+  MetaWindowActorPrivate *priv =
+    meta_window_actor_get_instance_private(window_actor);
+  MetaWindow *window = priv->window;
+
+  if (window && window->frame_bounds) {
+    cairo_region_destroy(window->frame_bounds);
+    window->frame_bounds = NULL;
+  }
 }
 
 MetaWindowActorChanges

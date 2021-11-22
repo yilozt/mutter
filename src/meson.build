@@ -169,6 +169,18 @@ if get_option('verbose')
   ]
 endif
 
+libshell_enums = gnome.mkenums_simple('shell-enum-types',
+  sources: [
+    'shell-blur-effect.h',
+  ]
+)
+
+libshell_src = [
+  libshell_enums,
+  'shell-blur-effect.h',
+  'shell-blur-effect.c',
+]
+
 mutter_sources = [
   'backends/edid.h',
   'backends/edid-parse.c',
@@ -458,6 +470,8 @@ mutter_sources = [
   'x11/window-x11-private.h',
   'x11/xprops.c',
   'x11/xprops.h',
+  'meta_clip_effect.c',
+  'meta_clip_effect.h',
 ]
 
 if have_egl
@@ -993,7 +1007,8 @@ subdir('meta')
 mutter_built_sources += mutter_enum_types
 
 libmutter = shared_library(libmutter_name,
-  mutter_sources,
+  # mutter_sources,
+  mutter_sources + libshell_src,
   mutter_built_sources,
   version: '0.0.0',
   soversion: 0,

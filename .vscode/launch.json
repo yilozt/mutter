@@ -11,13 +11,13 @@
             //
             // x11, run `Xephyr -br -ac -noreset -screen 1280x720 :5` in another terminal
             // then just need to press F5 in vscode
-            "args": ["-d", ":5"],
+            "args": ["-d", ":5", "--x11"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [
                 {
                     "name": "LD_LIBRARY_PATH",
-                    "value": "${workspaceFolder}/compile/usr/local/lib/mutter-8/:${workspaceFolder}/compile/usr/local/lib/mutter-8/plugins:${workspaceFolder}/compile/usr/local/lib"
+                    "value": "${workspaceFolder}/compile/usr/local/lib/mutter-9/:${workspaceFolder}/compile/usr/local/lib/mutter-9/plugins/:${workspaceFolder}/compile/usr/local/lib/"
                 }
             ],
             "externalConsole": false,

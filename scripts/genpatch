@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ver=40.5
+ver=41.1
 
 cd $(dirname $0)
 
@@ -20,7 +20,7 @@ rm -rf tmp
 cd ..
 
 git config diff.nodiff.command true
-git diff 40.5 > ./patches/rounded_corners_${ver}.patch
+git diff ${ver} > ./patches/rounded_corners_${ver}.patch
 git config --unset diff.nodiff.command
 
 cp src/shader.h ./patches

@@ -670,7 +670,7 @@ on_visible_changed (MetaWindowActor *self)
   if (!priv->blur_actor)
     return;
 
-  if (priv->visible)
+  if (priv->visible && !priv->unminimize_in_progress)
     clutter_actor_show(priv->blur_actor);
   else
     clutter_actor_hide(priv->blur_actor);
@@ -906,6 +906,47 @@ is_freeze_thaw_effect (MetaPluginEffect event)
   }
 }
 
+static void
+meta_window_actor_remove_blur (MetaWindowActor *self)
+{
+  MetaWindowActorPrivate *priv =
+    meta_window_actor_get_instance_private (self);
+
+  if (!priv->blur_actor)
+    return;
+
+  ClutterActor *parent = clutter_actor_get_parent (CLUTTER_ACTOR (self));
+  clutter_actor_remove_effect (priv->blur_actor, CLUTTER_EFFECT (priv->blur_effect));
+  clutter_actor_remove_child (parent, priv->blur_actor);
+}
+
+static void
+meta_window_actor_hide_blur (MetaWindowActor *self)
+{
+  MetaWindowActorPrivate *priv =
+    meta_window_actor_get_instance_private (self);
+
+  if (!priv->blur_actor)
+    return;
+
+  clutter_actor_hide(priv->blur_actor);
+}
+
+static void
+meta_window_actor_show_blur (MetaWindowActor *self)
+{
+  MetaWindowActorPrivate *priv =
+    meta_window_actor_get_instance_private (self);
+
+  if (!priv->blur_actor)
+    return;
+
+  if (priv->visible && !priv->unminimize_in_progress)
+    clutter_actor_show(priv->blur_actor);
+  else
+    clutter_actor_hide(priv->blur_actor);
+}
+
 static gboolean
 start_simple_effect (MetaWindowActor  *self,
                      MetaPluginEffect  event)
@@ -925,15 +966,29 @@ start_simple_effect (MetaWindowActor  *self,
   case META_PLUGIN_NONE:
     return FALSE;
   case META_PLUGIN_MINIMIZE:
+      if (priv->round_clip_effect)
+        {
+          meta_window_actor_hide_blur(self);
+        }
     counter = &priv->minimize_in_progress;
     break;
   case META_PLUGIN_UNMINIMIZE:
+      if (priv->round_clip_effect)
+        {
+          meta_window_actor_hide_blur(self);
+        }
     counter = &priv->unminimize_in_progress;
     break;
   case META_PLUGIN_MAP:
     counter = &priv->map_in_progress;
     break;
   case META_PLUGIN_DESTROY:
+      if (priv->round_clip_effect)
+        {
+          clutter_actor_remove_effect (CLUTTER_ACTOR(self),
+                                       CLUTTER_EFFECT(priv->round_clip_effect));
+          meta_window_actor_remove_blur(self);
+        }
     counter = &priv->destroy_in_progress;
     break;
   case META_PLUGIN_SIZE_CHANGE:
@@ -963,20 +1018,6 @@ start_simple_effect (MetaWindowActor  *self,
 }
 
 static void
-meta_window_actor_remove_blur (MetaWindowActor *self)
-{
-  MetaWindowActorPrivate *priv =
-    meta_window_actor_get_instance_private (self);
-
-  if (!priv->blur_actor)
-    return;
-
-  ClutterActor *parent = clutter_actor_get_parent (CLUTTER_ACTOR (self));
-  clutter_actor_remove_effect (priv->blur_actor, CLUTTER_EFFECT (priv->blur_effect));
-  clutter_actor_remove_child (parent, priv->blur_actor);
-}
-
-static void
 meta_window_actor_after_effects (MetaWindowActor *self)
 {
   MetaWindowActorPrivate *priv =
@@ -989,12 +1030,6 @@ meta_window_actor_after_effects (MetaWindowActor *self)
 
   if (priv->needs_destroy)
     {
-      if (priv->round_clip_effect)
-        {
-          clutter_actor_remove_effect (CLUTTER_ACTOR(self),
-                                       CLUTTER_EFFECT(priv->round_clip_effect));
-          meta_window_actor_remove_blur(self);
-        }
       clutter_actor_destroy (CLUTTER_ACTOR (self));
     }
   else
@@ -1002,6 +1037,10 @@ meta_window_actor_after_effects (MetaWindowActor *self)
       g_signal_emit (self, signals[EFFECTS_COMPLETED], 0);
       meta_window_actor_sync_visibility (self);
       meta_window_actor_sync_actor_geometry (self, FALSE);
+      if (priv->round_clip_effect && !priv->unminimize_in_progress)
+        {
+         meta_window_actor_show_blur(self);
+        }
     }
 
   clutter_stage_repick_device (stage, clutter_seat_get_pointer (seat));
@@ -1364,7 +1403,7 @@ meta_window_actor_sync_visibility (MetaWindowActor *self)
 
   if (CLUTTER_ACTOR_IS_VISIBLE (self) != priv->visible)
     {
-      if (priv->visible)
+      if (priv->visible && !priv->unminimize_in_progress)
         clutter_actor_show (CLUTTER_ACTOR (self));
       else
         clutter_actor_hide (CLUTTER_ACTOR (self));

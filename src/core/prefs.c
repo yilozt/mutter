@@ -124,6 +124,7 @@ static MetaButtonLayout button_layout;
 
 static int round_corner_radius = 8;
 static int border_width = 0;
+static int border_brightness = 40;
 static int blur_sigmal = 20;
 static int blur_window_opacity = 80;
 static int blur_brightness = 100;
@@ -568,6 +569,14 @@ static MetaIntPreference preferences_int[] =
         META_PREF_BORDER_WIDTH,
       },
       &border_width,
+    },
+    {
+      {
+        "border-brightness",
+        SCHEMA_MUTTER,
+        META_PREF_BORDER_BRIGHTNESS,
+      },
+      &border_brightness,
     },
     {
       {
@@ -1925,6 +1934,9 @@ meta_preference_to_string (MetaPreference pref)
     case META_PREF_BORDER_WIDTH:
       return "BORDER_WIDTH";
     
+    case META_PREF_BORDER_BRIGHTNESS:
+      return "BORDER_BRIGHTNESS";
+
     case META_PREF_BLUR_SIGMAL:
       return "BLUR_SIGMAL";
 
@@ -2457,6 +2469,12 @@ int
 meta_prefs_get_border_width(void)
 {
   return border_width;
+}
+
+double
+meta_prefs_get_border_brightness(void)
+{
+  return (double) border_brightness * 0.01;
 }
 
 int

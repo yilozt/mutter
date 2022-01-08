@@ -111,6 +111,7 @@ typedef enum
   META_PREF_CLIP_EDGE_PADDING,
   META_PREF_BLACK_LIST,
   META_PREF_BORDER_WIDTH,
+  META_PREF_BORDER_BRIGHTNESS,
   META_PREF_BLUR_SIGMAL,
   META_PREF_BLUR_BRIGHTNESS,
   META_PREF_BLUR_LIST,
@@ -253,6 +254,9 @@ gboolean meta_prefs_in_black_list(const char *name);
 
 META_EXPORT
 int      meta_prefs_get_border_width(void);
+
+META_EXPORT
+double   meta_prefs_get_border_brightness(void);
 
 META_EXPORT
 int      meta_prefs_get_blur_sigmal(void);

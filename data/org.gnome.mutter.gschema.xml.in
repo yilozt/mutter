@@ -31,6 +31,12 @@
       <summary>Window border</summary>
     </key>
 
+    <key name="border-brightness" type="i">
+      <default>40</default>
+      <range min="0" max="100"/>
+      <summary>Window border brightness</summary>
+    </key>
+
     <key name="round-corners-radius" type="i">
       <default>12</default>
       <range min="2" max="100"/>

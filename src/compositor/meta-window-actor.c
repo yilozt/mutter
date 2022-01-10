@@ -65,7 +65,6 @@ typedef struct _MetaWindowActorPrivate
   ClutterActor *blur_actor;
   MetaShellBlurEffect *blur_effect;
 
-  ulong visible_changed_id;
   ulong wm_class_changed_id;
   int geometry_scale;
 
@@ -663,20 +662,6 @@ init_surface_actor (MetaWindowActor *self)
 }
 
 static void
-on_visible_changed (MetaWindowActor *self)
-{
-  MetaWindowActorPrivate *priv = meta_window_actor_get_instance_private (self);
-  
-  if (!priv->blur_actor)
-    return;
-
-  if (priv->visible && !priv->unminimize_in_progress)
-    clutter_actor_show(priv->blur_actor);
-  else
-    clutter_actor_hide(priv->blur_actor);
-}
-
-static void
 on_wm_class_changed (MetaWindow *self,
                      gpointer    user_data)
 {
@@ -714,9 +699,6 @@ meta_window_actor_constructed (GObject *object)
 
   meta_window_actor_sync_actor_geometry (self, priv->window->placed);
 
-  priv->visible_changed_id = 
-    g_signal_connect (object, "notify::visible", G_CALLBACK (on_visible_changed), NULL);
-
   if (type == META_WINDOW_CLIENT_TYPE_WAYLAND)
   {
     priv->wm_class_changed_id =
@@ -740,7 +722,6 @@ meta_window_actor_dispose (GObject *object)
 
   priv->disposed = TRUE;
 
-  g_clear_signal_handler(&priv->visible_changed_id, object);
   meta_compositor_remove_window_actor (compositor, self);
 
   g_clear_object (&priv->window);
@@ -980,6 +961,10 @@ start_simple_effect (MetaWindowActor  *self,
     counter = &priv->unminimize_in_progress;
     break;
   case META_PLUGIN_MAP:
+      if (priv->round_clip_effect)
+        {
+          meta_window_actor_hide_blur(self);
+        }
     counter = &priv->map_in_progress;
     break;
   case META_PLUGIN_DESTROY:

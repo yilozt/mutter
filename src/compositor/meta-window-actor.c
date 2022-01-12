@@ -65,6 +65,7 @@ typedef struct _MetaWindowActorPrivate
   ClutterActor *blur_actor;
   MetaShellBlurEffect *blur_effect;
 
+  ulong visible_changed_id;
   ulong wm_class_changed_id;
   int geometry_scale;
 
@@ -662,6 +663,20 @@ init_surface_actor (MetaWindowActor *self)
 }
 
 static void
+on_visible_changed (MetaWindowActor *self)
+{
+  MetaWindowActorPrivate *priv = meta_window_actor_get_instance_private (self);
+
+  if (!priv->blur_actor)
+    return;
+
+  if (priv->visible && !meta_window_actor_effect_in_progress (self))
+    clutter_actor_show(priv->blur_actor);
+  else
+    clutter_actor_hide(priv->blur_actor);
+}
+
+static void
 on_wm_class_changed (MetaWindow *self,
                      gpointer    user_data)
 {
@@ -704,6 +719,9 @@ meta_window_actor_constructed (GObject *object)
     priv->wm_class_changed_id =
       g_signal_connect (window, "notify::wm-class", G_CALLBACK (on_wm_class_changed), object);
   }
+
+  priv->visible_changed_id = 
+    g_signal_connect (object, "notify::visible", G_CALLBACK (on_visible_changed), NULL);
 }
 
 static void
@@ -722,6 +740,7 @@ meta_window_actor_dispose (GObject *object)
 
   priv->disposed = TRUE;
 
+  g_clear_signal_handler(&priv->visible_changed_id, object);
   meta_compositor_remove_window_actor (compositor, self);
 
   g_clear_object (&priv->window);
@@ -869,6 +888,7 @@ meta_window_actor_effect_in_progress (MetaWindowActor *self)
     meta_window_actor_get_instance_private (self);
 
   return (priv->minimize_in_progress ||
+          priv->unminimize_in_progress ||
           priv->size_change_in_progress ||
           priv->map_in_progress ||
           priv->destroy_in_progress);
@@ -922,7 +942,7 @@ meta_window_actor_show_blur (MetaWindowActor *self)
   if (!priv->blur_actor)
     return;
 
-  if (priv->visible && !priv->unminimize_in_progress)
+  if (priv->visible && !meta_window_actor_effect_in_progress (self))
     clutter_actor_show(priv->blur_actor);
   else
     clutter_actor_hide(priv->blur_actor);
@@ -1022,10 +1042,7 @@ meta_window_actor_after_effects (MetaWindowActor *self)
       g_signal_emit (self, signals[EFFECTS_COMPLETED], 0);
       meta_window_actor_sync_visibility (self);
       meta_window_actor_sync_actor_geometry (self, FALSE);
-      if (priv->round_clip_effect && !priv->unminimize_in_progress)
-        {
-         meta_window_actor_show_blur(self);
-        }
+      meta_window_actor_show_blur(self);
     }
 
   clutter_stage_repick_device (stage, clutter_seat_get_pointer (seat));

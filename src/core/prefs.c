@@ -33,6 +33,8 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include <json-glib/json-glib.h>
+
 #include "compositor/meta-plugin-manager.h"
 #include "core/keybindings-private.h"
 #include "core/meta-accel-parse.h"
@@ -120,6 +122,17 @@ static gboolean show_fallback_app_menu = TRUE;
 static GDesktopVisualBellType visual_bell_type = G_DESKTOP_VISUAL_BELL_FULLSCREEN_FLASH;
 static MetaButtonLayout button_layout;
 
+static int round_corner_radius = 8;
+static int border_width = 0;
+static int border_brightness = 40;
+static int blur_sigmal = 20;
+static int blur_window_opacity = 80;
+static int blur_brightness = 100;
+static JsonNode *clip_edge_padding = NULL;
+/* NULL-terminated array */
+static char **black_list = NULL;
+static char **blur_list = NULL;
+
 /* NULL-terminated array */
 static char **workspace_names = NULL;
 
@@ -150,6 +163,7 @@ static gboolean mouse_button_mods_handler (GVariant*, gpointer*, gpointer);
 static gboolean button_layout_handler (GVariant*, gpointer*, gpointer);
 static gboolean overlay_key_handler (GVariant*, gpointer*, gpointer);
 static gboolean locate_pointer_key_handler (GVariant*, gpointer*, gpointer);
+static gboolean clip_edge_padding_handler (GVariant*, gpointer*, gpointer);
 
 static gboolean iso_next_group_handler (GVariant*, gpointer*, gpointer);
 
@@ -454,6 +468,15 @@ static MetaStringPreference preferences_string[] =
       locate_pointer_key_handler,
       NULL,
     },
+    {
+      {
+        "clip-edge-padding",
+        SCHEMA_MUTTER,
+        META_PREF_CLIP_EDGE_PADDING,
+      },
+      clip_edge_padding_handler,
+      NULL,
+    },
     { { NULL, 0, 0 }, NULL },
   };
 
@@ -474,6 +497,22 @@ static MetaStringArrayPreference preferences_string_array[] =
       },
       iso_next_group_handler,
       NULL,
+    },
+    {
+      { "black-list",
+        SCHEMA_MUTTER,
+        META_PREF_BLACK_LIST,
+      },
+      NULL,
+      &black_list,
+    },
+    {
+      { "blur-list",
+        SCHEMA_MUTTER,
+        META_PREF_BLUR_LIST,
+      },
+      NULL,
+      &blur_list,
     },
     { { NULL, 0, 0 }, NULL },
   };
@@ -514,6 +553,54 @@ static MetaIntPreference preferences_int[] =
         META_PREF_CURSOR_SIZE,
       },
       &cursor_size
+    },
+    {
+      {
+        "round-corners-radius",
+        SCHEMA_MUTTER,
+        META_PREF_CORNER_RADIUS,
+      },
+      &round_corner_radius,
+    },
+    {
+      {
+        "border-width",
+        SCHEMA_MUTTER,
+        META_PREF_BORDER_WIDTH,
+      },
+      &border_width,
+    },
+    {
+      {
+        "border-brightness",
+        SCHEMA_MUTTER,
+        META_PREF_BORDER_BRIGHTNESS,
+      },
+      &border_brightness,
+    },
+    {
+      {
+        "blur-sigmal",
+        SCHEMA_MUTTER,
+        META_PREF_BLUR_SIGMAL,
+      },
+      &blur_sigmal,
+    },
+    {
+      {
+        "blur-brightness",
+        SCHEMA_MUTTER,
+        META_PREF_BLUR_BRIGHTNESS,
+      },
+      &blur_brightness,
+    },
+    {
+      {
+        "blur-window-opacity",
+        SCHEMA_MUTTER,
+        META_PREF_BLUR_WINDOW_OPACITY,
+      },
+      &blur_window_opacity,
     },
     { { NULL, 0, 0 }, NULL },
   };
@@ -1589,6 +1676,81 @@ locate_pointer_key_handler (GVariant *value,
 }
 
 static gboolean
+clip_edge_padding_handler (GVariant *value,
+                           gpointer *result,
+                           gpointer  data)
+{
+  /* json string looks like this:
+   * 
+   * {
+   *    // array represent the clip padding of window: [left, right, top, bottom]
+   *    "global": [1, 1, 1, 1],
+   *    // special app settings,
+   *    "apps": {
+   *       // second part in `WM_CLASS` property of a window
+   *       "Typora": [0, 0, 0, 0],
+   *       ...
+   *    }
+   * } 
+   */
+
+  JsonNode *json;
+  JsonObject *obj;
+  JsonArray *arr;
+  JsonNode *element;
+  JsonObject *apps_obj;
+  GList *app_names;
+
+  const char *string_value;
+  GError *error = NULL;
+
+  *result = NULL;
+  string_value = g_variant_get_string(value, NULL);
+  json = json_from_string(string_value, &error);
+
+  if (error)
+  {
+    meta_topic(META_DEBUG_PREFS, "Failed to parse value for clip-edge-padding: %s", error->message);
+    g_error_free(error);
+    return FALSE;
+  }
+
+  if (!JSON_NODE_HOLDS_OBJECT(json))
+    goto failed;
+
+  obj = json_node_get_object(json);
+  arr = json_object_get_array_member(obj, "global");
+  if (!arr || json_array_get_length(arr) != 4)
+    goto failed;
+  
+  if (!(element = json_object_get_member(obj, "apps")))
+    goto failed;
+  if (!JSON_NODE_HOLDS_OBJECT(element))
+    goto failed;
+  apps_obj = json_node_get_object(element);
+
+  app_names = json_object_get_members(apps_obj);
+  for (GList *l = app_names; l != NULL; l = l->next)
+  {
+    arr = json_object_get_array_member(apps_obj, l->data);
+    if (!arr || json_array_get_length(arr) != 4)
+      goto failed;
+  }
+
+  if (clip_edge_padding != NULL)
+    json_node_unref(clip_edge_padding);
+  clip_edge_padding = json;
+  queue_changed(META_PREF_CLIP_EDGE_PADDING);
+
+  return TRUE;
+
+failed:
+  meta_topic(META_DEBUG_PREFS, "Failed to parse value for clip-edge-padding");
+  json_node_unref(json);
+  return FALSE;
+}
+
+static gboolean
 iso_next_group_handler (GVariant *value,
                         gpointer *result,
                         gpointer  data)
@@ -1759,6 +1921,33 @@ meta_preference_to_string (MetaPreference pref)
 
     case META_PREF_CHECK_ALIVE_TIMEOUT:
       return "CHECK_ALIVE_TIMEOUT";
+
+    case META_PREF_CORNER_RADIUS:
+      return "CORNER_RADIUS";
+
+    case META_PREF_CLIP_EDGE_PADDING:
+      return "CLIP_EDGE_PADDING";
+
+    case META_PREF_BLACK_LIST:
+      return "BLACK_LIST";
+
+    case META_PREF_BORDER_WIDTH:
+      return "BORDER_WIDTH";
+    
+    case META_PREF_BORDER_BRIGHTNESS:
+      return "BORDER_BRIGHTNESS";
+
+    case META_PREF_BLUR_SIGMAL:
+      return "BLUR_SIGMAL";
+
+    case META_PREF_BLUR_BRIGHTNESS:
+      return "BLUR_BRIGHTNESS";
+
+    case META_PREF_BLUR_LIST:
+      return "BLUR_LIST";
+
+    case META_PREF_BLUR_WINDOW_OPACITY:
+      return "BLUR_WINDOW_OPACITY";
     }
 
   return "(unknown)";
@@ -2226,4 +2415,95 @@ void
 meta_prefs_set_force_fullscreen (gboolean whether)
 {
   force_fullscreen = whether;
+}
+
+int
+meta_prefs_get_round_corner_radius (void)
+{
+  return round_corner_radius;
+}
+
+#define SET_PADDING(arr, v0, v1, v2, v3) \
+  { (arr)[0] = (v0); (arr)[1] = (v1); (arr)[2] = (v2); (arr)[3] = (v3); }
+
+void
+meta_prefs_get_clip_edge_padding (const char *name, int padding[4])
+{
+  JsonObject *obj;
+  JsonArray *arr;
+
+  if (!clip_edge_padding || !name) {
+    SET_PADDING(padding, 0, 0, 0, 0);
+    return;
+  }
+
+  obj = json_node_get_object(clip_edge_padding);
+  arr = json_object_get_array_member(obj, "global");
+  obj = json_object_get_object_member(obj, "apps");
+
+  if (json_object_has_member(obj, name))
+    arr = json_object_get_array_member(obj, name);
+
+  // array: { left, right, top, bottom }
+  SET_PADDING(padding, 
+              json_array_get_int_element(arr, 0) + 1,
+              json_array_get_int_element(arr, 1),
+              json_array_get_int_element(arr, 2) + 1,
+              json_array_get_int_element(arr, 3));
+}
+
+gboolean
+meta_prefs_in_black_list(const char *name)
+{
+  g_return_val_if_fail(black_list, FALSE);
+
+  int len = g_strv_length(black_list);
+
+  for (int i = 0; i < len; i++)
+    if (g_strcmp0(name, black_list[i]) == 0)
+      return TRUE;
+  return FALSE;
+}
+
+int
+meta_prefs_get_border_width(void)
+{
+  return border_width;
+}
+
+double
+meta_prefs_get_border_brightness(void)
+{
+  return (double) border_brightness * 0.01;
+}
+
+int
+meta_prefs_get_blur_sigmal(void)
+{
+  return blur_sigmal;
+}
+
+double
+meta_prefs_get_blur_brightness(void)
+{
+  return (double) blur_brightness * 0.01;
+}
+
+int
+meta_prefs_get_blur_window_opacity(void)
+{
+  return blur_window_opacity * 255 * 0.01;
+}
+
+gboolean
+meta_prefs_in_blur_list(const char *name)
+{
+  g_return_val_if_fail(blur_list, FALSE);
+
+  int len = g_strv_length(blur_list);
+
+  for (int i = 0; i < len; i++)
+    if (g_strcmp0(name, blur_list[i]) == 0)
+      return TRUE;
+  return FALSE;
 }

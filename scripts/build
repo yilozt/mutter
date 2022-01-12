@@ -1,0 +1,22 @@
+#!/bin/bash
+
+work_dir=$(cd $(dirname $0); cd ../; pwd)
+libdir="/usr/local/lib/mutter-9/plugins/"
+
+cd $work_dir
+
+mkdir -p build compile
+
+cd build
+if [ -z "$(ls -A .)" ]; then
+  meson ../
+fi
+
+ninja && meson install --destdir=${work_dir}/compile
+
+if [[ ! -d $libdir ]]; then
+  # We need to copy libdefault.so to /usr/local/lib
+  # to run mutter we build
+  sudo mkdir -p $libdir
+  sudo cp $work_dir/compile/$libdir/libdefault.so $libdir
+fi

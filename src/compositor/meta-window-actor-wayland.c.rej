@@ -1,0 +1,37 @@
+--- src/compositor/meta-window-actor-wayland.c
++++ src/compositor/meta-window-actor-wayland.c
+@@ -488,15 +827,34 @@ meta_window_actor_wayland_can_freeze_commits (MetaWindowActor *actor)
+   return FALSE;
+ }
+ 
++static void
++meta_window_actor_wayland_constructed (GObject *object)
++{
++  MetaWindowActorWayland *actor_wayland = META_WINDOW_ACTOR_WAYLAND (object);
++
++  /*
++   * Start off with an empty shape region to maintain the invariant that it's
++   * always set.
++   */
++  actor_wayland->shape_region = cairo_region_create ();
++
++  G_OBJECT_CLASS (meta_window_actor_wayland_parent_class)->constructed (object);
++}
++
+ static void
+ meta_window_actor_wayland_dispose (GObject *object)
+ {
+   MetaWindowActor *window_actor = META_WINDOW_ACTOR (object);
++  MetaWindowActorWayland *actor_wayland = META_WINDOW_ACTOR_WAYLAND (object);
++
+   MetaSurfaceActor *surface_actor =
+     meta_window_actor_get_surface (window_actor);
+   GList *children;
+   GList *l;
+ 
++  g_clear_signal_handler (&actor_wayland->size_changed_id, surface_actor);
++  g_clear_signal_handler (&actor_wayland->repaint_scheduled_id, surface_actor);
++
+   children = clutter_actor_get_children (CLUTTER_ACTOR (window_actor));
+   for (l = children; l; l = l->next)
+     {

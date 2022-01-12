@@ -1,0 +1,35 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "run mutter",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/compile/usr/local/bin/mutter",
+            //wayland
+            // "args": ["--nested", "--wayland"],
+            //
+            // x11, run `Xephyr -br -ac -noreset -screen 1280x720 :5` in another terminal
+            // then just need to press F5 in vscode
+            "args": ["-d", ":5", "--x11"],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                {
+                    "name": "LD_LIBRARY_PATH",
+                    "value": "${workspaceFolder}/compile/usr/local/lib/mutter-9/:${workspaceFolder}/compile/usr/local/lib/mutter-9/plugins/:${workspaceFolder}/compile/usr/local/lib/"
+                }
+            ],
+            "externalConsole": false,
+            "preLaunchTask": "build",
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "为 gdb 启用整齐打印",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        }
+    ]
+}

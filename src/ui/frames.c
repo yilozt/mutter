@@ -711,6 +711,27 @@ meta_ui_frame_get_bounds (MetaUIFrame *frame)
   return get_visible_region (frame, &fgeom);
 }
 
+cairo_region_t * 
+meta_ui_frame_get_bounds_clipped (const MetaRectangle *bounds,
+                                  float radius)
+{
+  MetaFrameGeometry fgeom;
+ 
+  fgeom.borders.invisible.left = bounds->x;
+  fgeom.borders.invisible.top =  bounds->y;
+  fgeom.borders.invisible.bottom = 0;
+  fgeom.borders.invisible.right =  0;
+  fgeom.width  = bounds->width + bounds->x;
+  fgeom.height = bounds->height + bounds->y;
+
+  fgeom.top_left_corner_rounded_radius = radius;
+  fgeom.top_right_corner_rounded_radius = radius;
+  fgeom.bottom_left_corner_rounded_radius = radius;
+  fgeom.bottom_right_corner_rounded_radius = radius;
+  
+  return get_visible_region (NULL, &fgeom);
+}
+
 void
 meta_ui_frame_move_resize (MetaUIFrame *frame,
                            int x, int y, int width, int height)

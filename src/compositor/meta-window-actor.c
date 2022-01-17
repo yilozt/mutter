@@ -309,8 +309,7 @@ _meta_window_actor_should_clip(MetaWindowActor *self)
   MetaWindowActorPrivate *priv = meta_window_actor_get_instance_private (self);
   MetaWindow *window = priv->window;
 
-  if (/* meta_window_get_client_type(window) == META_WINDOW_CLIENT_TYPE_WAYLAND || */
-      meta_prefs_in_black_list(window->res_name))
+  if (meta_prefs_in_black_list(window->res_name))
     {
       return FALSE;
     }
@@ -683,6 +682,7 @@ on_wm_class_changed (MetaWindow *self,
   MetaWindowActor *actor = meta_window_actor_from_window (self);
   MetaWindowActorPrivate *priv = meta_window_actor_get_instance_private (actor);
 
+  priv->round_clip_effect = create_clip_effect(actor);
   meta_window_actor_create_blur_actor(actor);
   g_clear_signal_handler(&priv->wm_class_changed_id, self);
 }
@@ -769,7 +769,8 @@ meta_window_actor_set_property (GObject      *object,
     {
     case PROP_META_WINDOW:
       priv->window = g_value_dup_object (value);
-      priv->round_clip_effect = create_clip_effect(self);
+      if (priv->window->client_type == META_WINDOW_CLIENT_TYPE_X11)
+        priv->round_clip_effect = create_clip_effect(self);
       g_signal_connect_object (priv->window, "notify::appears-focused",
                                G_CALLBACK (window_appears_focused_notify), self, 0);
       break;

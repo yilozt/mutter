@@ -76,8 +76,7 @@ struct _MetaShellBlurEffect
   FramebufferData brightness_fb;
   int brightness_uniform;
   int bounds_uniform;
-  int corner_centers_1_uniform;
-  int corner_centers_2_uniform;
+  int clip_radius_uniform;
   int pixel_step_uniform;
   int skip_uniform;
   gboolean skip;
@@ -170,29 +169,14 @@ update_brightness (MetaShellBlurEffect *self,
       float height = self->tex_height;
       float radius = meta_prefs_get_round_corner_radius();
       float bounds[] = { 0.0, 0.0, width, height };
-      float corner_centers_1[] = {
-        radius,
-        radius,
-        width - radius,
-        radius
-      };
-      float corner_centers_2[] = {
-        width - radius,
-        height - radius,
-        radius,
-        height - radius
-      };
       float pixel_step[] = { 1.0 / width, 1.0 / height };
 
       cogl_pipeline_set_uniform_float (self->brightness_fb.pipeline,
                                       self->bounds_uniform,
                                       4, 1, bounds);
-      cogl_pipeline_set_uniform_float (self->brightness_fb.pipeline,
-                                      self->corner_centers_1_uniform,
-                                      4, 1, corner_centers_1);
-      cogl_pipeline_set_uniform_float (self->brightness_fb.pipeline,
-                                      self->corner_centers_2_uniform,
-                                      4, 1, corner_centers_2);
+      cogl_pipeline_set_uniform_1f (self->brightness_fb.pipeline,
+                                    self->clip_radius_uniform,
+                                    radius);
       cogl_pipeline_set_uniform_float (self->brightness_fb.pipeline,
                                       self->pixel_step_uniform,
                                       2, 1, pixel_step);
@@ -849,10 +833,8 @@ meta_shell_blur_effect_init (MetaShellBlurEffect *self)
     cogl_pipeline_get_uniform_location (self->brightness_fb.pipeline, "brightness");
   self->bounds_uniform =
     cogl_pipeline_get_uniform_location (self->brightness_fb.pipeline, "bounds");
-  self->corner_centers_1_uniform =
-    cogl_pipeline_get_uniform_location (self->brightness_fb.pipeline, "corner_centers_1");
-  self->corner_centers_2_uniform =
-    cogl_pipeline_get_uniform_location (self->brightness_fb.pipeline, "corner_centers_2");
+  self->clip_radius_uniform =
+    cogl_pipeline_get_uniform_location (self->brightness_fb.pipeline, "clip_radius");
   self->pixel_step_uniform =
     cogl_pipeline_get_uniform_location (self->brightness_fb.pipeline, "pixel_step");
   self->skip_uniform =

@@ -128,6 +128,7 @@ static int border_brightness = 40;
 static int blur_sigmal = 20;
 static int blur_window_opacity = 80;
 static int blur_brightness = 100;
+static gboolean rounded_in_maximized = FALSE;
 static JsonNode *clip_edge_padding = NULL;
 /* NULL-terminated array */
 static char **black_list = NULL;
@@ -414,6 +415,13 @@ static MetaBoolPreference preferences_bool[] =
         META_PREF_LOCATE_POINTER,
       },
       &locate_pointer_is_enabled,
+    },
+    {
+      { "rounded-in-maximized",
+        SCHEMA_MUTTER,
+        META_PREF_ROUNDED_IN_MAXIMIZED,
+      },
+      &rounded_in_maximized,
     },
     { { NULL, 0, 0 }, NULL },
   };
@@ -1948,6 +1956,9 @@ meta_preference_to_string (MetaPreference pref)
 
     case META_PREF_BLUR_WINDOW_OPACITY:
       return "BLUR_WINDOW_OPACITY";
+
+    case META_PREF_ROUNDED_IN_MAXIMIZED:
+      return "ROUNDED_IN_MAXIMIZED";    
     }
 
   return "(unknown)";
@@ -2493,6 +2504,12 @@ int
 meta_prefs_get_blur_window_opacity(void)
 {
   return blur_window_opacity * 255 * 0.01;
+}
+
+gboolean
+meta_prefs_get_rounded_in_maximized(void)
+{
+  return rounded_in_maximized;
 }
 
 gboolean

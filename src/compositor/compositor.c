@@ -1149,6 +1149,10 @@ prefs_changed_cb(MetaPreference pref,
     case META_PREF_BLUR_WINDOW_OPACITY:
       meta_window_actor_update_blur_window_opacity (l->data);
       break;
+    case META_PREF_ROUNDED_IN_MAXIMIZED:
+      meta_window_actor_update_glsl (l->data);
+      meta_window_actor_update_blur_position_size(l->data);
+      break;
     default:
       break;
     }

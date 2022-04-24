@@ -116,6 +116,7 @@ typedef enum
   META_PREF_BLUR_BRIGHTNESS,
   META_PREF_BLUR_LIST,
   META_PREF_BLUR_WINDOW_OPACITY,
+  META_PREF_ROUNDED_IN_MAXIMIZED,
 } MetaPreference;
 
 typedef void (* MetaPrefsChangedFunc) (MetaPreference pref,
@@ -266,6 +267,9 @@ double   meta_prefs_get_blur_brightness(void);
 
 META_EXPORT
 int      meta_prefs_get_blur_window_opacity(void);
+
+META_EXPORT
+gboolean meta_prefs_get_rounded_in_maximized(void);
 
 META_EXPORT
 gboolean meta_prefs_in_blur_list(const char *name);

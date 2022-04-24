@@ -157,7 +157,7 @@ meta_window_actor_update_blur_position_size(MetaWindowActor *self)
   meta_window_get_frame_rect (priv->window, &frame_rect);
   meta_window_get_buffer_rect (priv->window, &buf_rect);
 
-  if (meta_window_get_maximized (priv->window) ||
+  if ((meta_window_get_maximized (priv->window) && !meta_prefs_get_rounded_in_maximized()) ||
       meta_window_is_fullscreen (priv->window))
     {
       clutter_actor_set_position (priv->blur_actor,
@@ -322,9 +322,9 @@ meta_window_actor_should_clip(MetaWindowActor *self)
 {
   MetaWindowActorPrivate *priv = meta_window_actor_get_instance_private (self);
 
-  return priv->should_clip && 
-        !(meta_window_get_maximized(priv->window)||
-          meta_window_is_fullscreen(priv->window)); 
+  return priv->should_clip  && 
+        !((meta_window_get_maximized(priv->window) && !meta_prefs_get_rounded_in_maximized())
+          || meta_window_is_fullscreen(priv->window)); 
 }
 
 void

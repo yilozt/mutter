@@ -22,7 +22,7 @@
     <key name="blur-window-opacity" type="i">
       <default>80</default>
       <range min="0" max="100"/>
-      <summary>Blur brightness</summary>
+      <summary>Blur Window opacity</summary>
     </key>
 
     <key name="border-width" type="i">
@@ -77,6 +77,14 @@
       <description>
         The contents of the list represent the instance part of the window's
         `WM_CLASS`, as same as the output of `xprop WM_CLASS|cut -d \" -f 2`
+      </description>
+    </key>
+
+    <key name="rounded-in-maximized" type="b">
+      <default>false</default>
+      <summary>Enable rounded corners when windows maximized</summary>
+      <description>
+        When true, the windows will always be clipped when be maximized.
       </description>
     </key>
 
